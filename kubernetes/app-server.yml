@@ -1,0 +1,58 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: kube-tech-talk-app-server
+  labels:
+    project: kube-tech-talk
+    role: app-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      project: kube-tech-talk
+      role: app-server
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      name: kube-tech-talk-app-server
+      labels:
+        project: kube-tech-talk
+        role: app-server
+      # secrets can be added via https://github.com/zendesk/samson_secret_puller
+      annotations:
+        secret/SECRET_PHRASE: ${ENV}/kube-tech-talk/global/secret_phrase
+    spec:
+      containers:
+      - name: kube-tech-talk
+        image: docker-registry.zende.sk/samson_non_prod/kube-tech-talk:latest
+        resources:
+          limits:
+            cpu: 20m
+            memory: 150Mi
+        ports:
+        - name: main-port
+          containerPort: 9292
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9292
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-tech-talk
+  labels:
+    project: kube-tech-talk
+    role: app-server
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: main-port
+  selector:
+    project: kube-tech-talk
+    role: app-server
